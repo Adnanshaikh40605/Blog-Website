@@ -1,13 +1,31 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, IconButton, Container, Avatar } from '@mui/material';
+import React, { useState } from 'react';
+import { AppBar, Toolbar, Typography, Button, Box, IconButton, Container, Avatar, Menu, MenuItem } from '@mui/material';
 import { Link } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import MenuIcon from '@mui/icons-material/Menu';
 import PlaceholderImage from './PlaceholderImage';
 
+const pages = [
+  { name: 'Home', path: '/' },
+  { name: 'Blogs', path: '/blogs' },
+  { name: 'About', path: '/about' },
+  { name: 'Contact', path: '/contact' },
+  { name: 'Status', path: '/status' }
+];
+
 const Header = () => {
-  const [logoError, setLogoError] = React.useState(false);
+  const [logoError, setLogoError] = useState(false);
+  const [anchorElNav, setAnchorElNav] = useState(null);
+
+  const handleOpenNavMenu = (event) => {
+    setAnchorElNav(event.currentTarget);
+  };
+
+  const handleCloseNavMenu = () => {
+    setAnchorElNav(null);
+  };
 
   return (
     <AppBar position="static" color="primary" elevation={0} sx={{ borderBottom: '1px solid #e0e0e0' }}>
@@ -31,11 +49,54 @@ const Header = () => {
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: '0.5rem', md: '1rem' } }}>
-            <Button color="inherit" component={Link} to="/">Home</Button>
-            <Button color="inherit" component={Link} to="/blogs">Blogs</Button>
-            <Button color="inherit" component={Link} to="/about">About Us</Button>
-            <Button color="inherit" component={Link} to="/contact">Contact Us</Button>
+          <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+            <IconButton
+              size="large"
+              aria-label="menu"
+              aria-controls="menu-appbar"
+              aria-haspopup="true"
+              onClick={handleOpenNavMenu}
+              color="inherit"
+            >
+              <MenuIcon />
+            </IconButton>
+            <Menu
+              id="menu-appbar"
+              anchorEl={anchorElNav}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              open={Boolean(anchorElNav)}
+              onClose={handleCloseNavMenu}
+              sx={{
+                display: { xs: 'block', md: 'none' },
+              }}
+            >
+              {pages.map((page) => (
+                <MenuItem key={page.name} onClick={handleCloseNavMenu} component={Link} to={page.path}>
+                  <Typography textAlign="center">{page.name}</Typography>
+                </MenuItem>
+              ))}
+            </Menu>
+          </Box>
+          
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: { md: '1rem' } }}>
+            {pages.map((page) => (
+              <Button 
+                key={page.name} 
+                color="inherit" 
+                component={Link} 
+                to={page.path}
+              >
+                {page.name}
+              </Button>
+            ))}
             
             <Button 
               color="inherit" 

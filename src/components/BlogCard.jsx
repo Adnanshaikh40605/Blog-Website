@@ -1,11 +1,15 @@
 import React from 'react';
-import { Card, CardContent, CardMedia, Typography, Button, Box } from '@mui/material';
+import { Card, CardContent, CardMedia, Typography, Button, Box, Chip } from '@mui/material';
 import { Link } from 'react-router-dom';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import PlaceholderImage from './PlaceholderImage';
+import { formatDate } from '../utils/dateUtils';
 
 const BlogCard = ({ blog }) => {
   const [imageError, setImageError] = React.useState(false);
+  
+  // Format the date - use created_at from API or fallback to date
+  const formattedDate = formatDate(blog.created_at || blog.date);
 
   return (
     <Card 
@@ -24,17 +28,30 @@ const BlogCard = ({ blog }) => {
       }}
     >
       <Box sx={{ position: 'relative', height: '200px' }}>
-        {!imageError && blog.image ? (
+        {!imageError && (blog.featured_image_url || blog.image) ? (
           <CardMedia
             component="img"
             height="200"
-            image={blog.image}
+            image={blog.featured_image_url || blog.image}
             alt={blog.title}
             sx={{ objectFit: 'cover' }}
             onError={() => setImageError(true)}
           />
         ) : (
           <PlaceholderImage width={345} height={200} text="Blog Image" />
+        )}
+        {blog.category && (
+          <Chip
+            label={blog.category}
+            size="small"
+            color="secondary"
+            sx={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              fontWeight: 500,
+            }}
+          />
         )}
       </Box>
       <CardContent sx={{ flexGrow: 1, p: 3 }}>
@@ -43,7 +60,7 @@ const BlogCard = ({ blog }) => {
           color="text.secondary" 
           sx={{ mb: 1, display: 'block' }}
         >
-          {blog.date}
+          {formattedDate}
         </Typography>
         <Typography 
           gutterBottom 
@@ -66,7 +83,7 @@ const BlogCard = ({ blog }) => {
         
         <Button 
           component={Link} 
-          to={`/blog/${blog.id}`} 
+          to={`/blog/${blog.slug || blog.id}`} 
           color="secondary" 
           sx={{ 
             p: 0, 

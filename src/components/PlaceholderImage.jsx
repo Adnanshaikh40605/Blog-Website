@@ -14,7 +14,7 @@ const PlaceholderImage = ({ width = 200, height = 200, text = 'Placeholder Image
       height={height}
       xmlns="http://www.w3.org/2000/svg"
       viewBox={`0 0 ${numWidth} ${numHeight}`}
-      style={{ maxWidth: '0%' }}
+      style={{ maxWidth: '100%' }}
     >
       <rect width="100%" height="100%" fill={bgColor} />
       <text

@@ -1,7 +1,11 @@
-import React from 'react';
-import { Container, Typography, Box, TextField, Button, Divider, Grid, Card, Avatar, Paper } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Typography, Box, TextField, Button, Divider, Grid, Card, Avatar, Paper, CircularProgress } from '@mui/material';
 import { useParams, Link } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { postsApi, commentsApi } from '../services/api';
+import { formatDate, getRelativeTime } from '../utils/dateUtils';
+import ErrorMessage from '../components/ErrorMessage';
 
 const blogs = [
   { 
@@ -113,26 +117,175 @@ const blogs = [
 ];
 
 // Related blogs (excluding the current one)
-const getRelatedBlogs = (currentBlogId) => {
+const getRelatedBlogs = (blogs, currentSlug) => {
+  if (!blogs || !Array.isArray(blogs)) {
+    return [];
+  }
   return blogs
-    .filter(blog => blog.id !== parseInt(currentBlogId))
+    .filter(blog => blog.slug !== currentSlug)
     .slice(0, 3);
 };
 
 const BlogDetailPage = () => {
-  const { id } = useParams();
-  const blog = blogs.find(b => b.id === parseInt(id));
-  const relatedBlogs = getRelatedBlogs(id);
+  const { slug } = useParams();
+  const [blog, setBlog] = useState(null);
+  const [relatedBlogs, setRelatedBlogs] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [commentError, setCommentError] = useState(null);
+  const [apiUrl, setApiUrl] = useState('');
+  
+  // Form state for comments
+  const [commentForm, setCommentForm] = useState({
+    name: '',
+    email: '',
+    content: ''
+  });
+  
+  // Fetch blog post by slug
+  const fetchBlogAndRelated = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Store the API URL being used for display in case of errors
+      setApiUrl(postsApi.getBaseUrl ? postsApi.getBaseUrl() : 'API URL not available');
+      
+      // Get the current blog
+      const blogResponse = await postsApi.getPostBySlug(slug);
+      setBlog(blogResponse.data);
+      
+      // Get related blogs
+      const allBlogsResponse = await postsApi.getAllPosts();
+      const allBlogs = allBlogsResponse.data.results || allBlogsResponse.data;
+      setRelatedBlogs(getRelatedBlogs(allBlogs, slug));
+      
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching blog:', err);
+      
+      // Provide more detailed error messages
+      if (err.code === 'ERR_NETWORK') {
+        setError(`Network error: Could not connect to the API server. Please check your internet connection or try again later.`);
+      } else if (err.response) {
+        setError(`Server error: ${err.response.status} - ${err.response.statusText || 'Unknown error'}`);
+      } else {
+        setError('Failed to load blog. Please try again later.');
+      }
+      
+      setBlog(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [slug]);
+  
+  useEffect(() => {
+    fetchBlogAndRelated();
+  }, [fetchBlogAndRelated]);
+  
+  // Fetch comments when blog is loaded
+  const fetchComments = useCallback(async () => {
+    if (!blog) return;
+    
+    try {
+      const response = await commentsApi.getCommentsByPostId(blog.id);
+      setComments(response.data.results || response.data);
+      setCommentError(null);
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+      
+      // Provide more detailed error messages
+      if (err.code === 'ERR_NETWORK') {
+        setCommentError('Network error: Could not load comments. Please check your connection.');
+      } else if (err.response) {
+        setCommentError(`Error loading comments: ${err.response.status} - ${err.response.statusText || 'Unknown error'}`);
+      } else {
+        setCommentError('Failed to load comments. Please try again later.');
+      }
+      
+      setComments([]);
+    }
+  }, [blog]);
+  
+  useEffect(() => {
+    if (blog) {
+      fetchComments();
+    }
+  }, [blog, fetchComments]);
+  
+  // Handle comment form changes
+  const handleCommentChange = (e) => {
+    const { name, value } = e.target;
+    setCommentForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  // Handle comment submission
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!blog) return;
+    
+    setCommentLoading(true);
+    try {
+      await commentsApi.submitComment({
+        ...commentForm,
+        post: blog.id
+      });
+      
+      // Reset form
+      setCommentForm({
+        name: '',
+        email: '',
+        content: ''
+      });
+      
+      // Refresh comments
+      await fetchComments();
+      setCommentError(null);
+    } catch (err) {
+      console.error('Error submitting comment:', err);
+      
+      // Provide more detailed error messages
+      if (err.code === 'ERR_NETWORK') {
+        setCommentError('Network error: Could not submit comment. Please check your connection.');
+      } else if (err.response) {
+        setCommentError(`Error submitting comment: ${err.response.status} - ${err.response.statusText || 'Unknown error'}`);
+      } else {
+        setCommentError('Failed to submit comment. Please try again.');
+      }
+    } finally {
+      setCommentLoading(false);
+    }
+  };
 
-  if (!blog) {
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress color="secondary" />
+      </Container>
+    );
+  }
+
+  if (error || !blog) {
     return (
       <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Typography variant="h4" align="center">Blog not found</Typography>
+        <ErrorMessage 
+          message={error || 'Blog not found'} 
+          apiUrl={apiUrl}
+          onRetry={fetchBlogAndRelated}
+          loading={loading}
+          sx={{ mb: 4 }}
+        />
+        
         <Box sx={{ textAlign: 'center', mt: 4 }}>
           <Button 
             component={Link} 
             to="/blogs" 
-            variant="contained" 
+            variant="outlined" 
             color="secondary"
             startIcon={<ArrowBackIcon />}
           >
@@ -171,211 +324,260 @@ const BlogDetailPage = () => {
 
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
         <Avatar 
-          src={blog.authorAvatar} 
-          alt={blog.author}
+          src={blog.author_avatar || '/images/default-avatar.jpg'} 
+          alt={blog.author || 'Author'}
           sx={{ width: 48, height: 48, mr: 2 }}
         />
         <Box>
           <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-            {blog.author}
+            {blog.author || 'Anonymous'}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {blog.date} • {blog.category}
+            {new Date(blog.created_at || blog.date).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })} 
+            {blog.category && ` • ${blog.category}`}
           </Typography>
         </Box>
       </Box>
 
       {/* Featured image */}
-      <Box 
-        component="img" 
-        src={blog.image} 
-        alt={blog.title}
-        sx={{ 
-          width: '100%', 
-          height: 'auto',
-          borderRadius: '12px',
-          mb: 4,
-          maxHeight: '500px',
-          objectFit: 'cover',
-        }} 
-      />
+      {(blog.featured_image_url || blog.image) && (
+        <Box 
+          component="img" 
+          src={blog.featured_image_url || blog.image} 
+          alt={blog.title}
+          sx={{ 
+            width: '100%', 
+            height: 'auto',
+            borderRadius: '12px',
+            mb: 4,
+            maxHeight: '500px',
+            objectFit: 'cover',
+          }} 
+        />
+      )}
 
       {/* Blog content */}
       <Box 
         sx={{ 
           typography: 'body1',
-          lineHeight: 1.7,
-          '& h2': {
-            mt: 4,
-            mb: 2,
+          '& h2': { 
+            mt: 4, 
+            mb: 2, 
             fontWeight: 'bold',
-            fontSize: '1.75rem',
+            fontSize: '1.75rem'
           },
-          '& h3': {
-            mt: 3,
-            mb: 1,
-            fontWeight: 'bold',
-            fontSize: '1.25rem',
-          },
-          '& p': {
+          '& h3': { 
+            mt: 3, 
             mb: 2,
-          }
+            fontWeight: 'medium',
+            fontSize: '1.4rem'
+          },
+          '& p': { 
+            mb: 2,
+            lineHeight: 1.7
+          },
         }}
         dangerouslySetInnerHTML={{ __html: blog.content }}
       />
 
-      <Divider sx={{ my: 6 }} />
-
-      {/* Related blogs */}
-      <Box sx={{ mb: 6 }}>
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
-          Related Blogs
+      {/* Comments section */}
+      <Box sx={{ mt: 8, mb: 4 }}>
+        <Typography variant="h4" sx={{ mb: 4, fontWeight: 'medium' }}>
+          Comments ({comments.length})
         </Typography>
-        <Grid container spacing={4}>
-          {relatedBlogs.map(relatedBlog => (
-            <Grid item key={relatedBlog.id} xs={12} sm={6} md={4}>
-              <Card 
-                component={Link}
-                to={`/blog/${relatedBlog.id}`}
-                sx={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  p: 2,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  borderRadius: '8px',
-                  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-                  }
-                }}
-              >
-                <Box 
-                  component="img"
-                  src={relatedBlog.image}
-                  alt={relatedBlog.title}
-                  sx={{ 
-                    width: 80, 
-                    height: 80, 
-                    borderRadius: '8px',
-                    objectFit: 'cover',
-                    mr: 2
-                  }}
+
+        {/* Comment form */}
+        <Paper elevation={0} sx={{ p: 3, mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
+          <Typography variant="h6" sx={{ mb: 3 }}>Leave a Comment</Typography>
+          <form onSubmit={handleCommentSubmit}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="name"
+                  label="Name"
+                  variant="outlined"
+                  fullWidth
+                  required
+                  value={commentForm.name}
+                  onChange={handleCommentChange}
+                  disabled={commentLoading}
                 />
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'medium' }}>
-                    {relatedBlog.title}
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  name="email"
+                  label="Email"
+                  type="email"
+                  variant="outlined"
+                  fullWidth
+                  required
+                  value={commentForm.email}
+                  onChange={handleCommentChange}
+                  disabled={commentLoading}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  name="content"
+                  label="Comment"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  rows={4}
+                  required
+                  value={commentForm.content}
+                  onChange={handleCommentChange}
+                  disabled={commentLoading}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                {commentError && (
+                  <Typography color="error" sx={{ mb: 2 }}>
+                    {commentError}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {relatedBlog.date}
+                )}
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="secondary"
+                    disabled={commentLoading}
+                  >
+                    {commentLoading ? 'Submitting...' : 'Submit Comment'}
+                  </Button>
+                  {commentError && (
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      onClick={fetchComments}
+                      startIcon={<RefreshIcon />}
+                      disabled={commentLoading}
+                    >
+                      Refresh Comments
+                    </Button>
+                  )}
+                </Box>
+              </Grid>
+            </Grid>
+          </form>
+        </Paper>
+
+        {/* Comments list */}
+        {comments.length > 0 ? (
+          comments.map((comment) => (
+            <Paper 
+              key={comment.id} 
+              elevation={0} 
+              sx={{ 
+                p: 3, 
+                mb: 2, 
+                bgcolor: 'background.paper', 
+                borderRadius: 2 
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
+                  {comment.name ? comment.name[0].toUpperCase() : 'A'}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                    {comment.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {formatDate(comment.created_at)}
                   </Typography>
                 </Box>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+              </Box>
+              <Typography variant="body1">
+                {comment.content}
+              </Typography>
+            </Paper>
+          ))
+        ) : commentError ? (
+          <Box sx={{ textAlign: 'center', py: 4, bgcolor: 'background.paper', borderRadius: 2, mb: 4 }}>
+            <ErrorMessage 
+              message={commentError} 
+              onRetry={fetchComments}
+              loading={commentLoading}
+            />
+          </Box>
+        ) : (
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
+            No comments yet. Be the first to comment!
+          </Typography>
+        )}
       </Box>
 
-      {/* Comments section */}
-      <Box sx={{ mb: 6 }}>
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
-          Comments
-        </Typography>
-        
-        <Paper elevation={0} sx={{ p: 3, bgcolor: '#f8f9fa', borderRadius: '12px', mb: 4 }}>
-          <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-            Leave a Comment
+      {/* Related blogs section */}
+      {relatedBlogs.length > 0 && (
+        <Box sx={{ mt: 8 }}>
+          <Divider sx={{ mb: 4 }} />
+          <Typography variant="h4" sx={{ mb: 4, fontWeight: 'medium' }}>
+            Related Articles
           </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Your Name" variant="outlined" size="small" />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Your Email" variant="outlined" size="small" />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField 
-                fullWidth 
-                label="Your Comment" 
-                multiline 
-                rows={4} 
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button variant="contained" color="secondary">
-                Submit Comment
-              </Button>
-            </Grid>
+          <Grid container spacing={4}>
+            {relatedBlogs.map((relatedBlog) => (
+              <Grid item key={relatedBlog.id} xs={12} sm={6} md={4}>
+                <Card 
+                  component={Link} 
+                  to={`/blog/${relatedBlog.slug}`}
+                  sx={{ 
+                    display: 'block', 
+                    height: '100%', 
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    borderRadius: 2,
+                    transition: 'transform 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                    }
+                  }}
+                >
+                  <Box 
+                    component="img"
+                    src={relatedBlog.featured_image_url || relatedBlog.image || '/images/placeholder.jpg'}
+                    alt={relatedBlog.title}
+                    sx={{ 
+                      width: '100%', 
+                      height: 200, 
+                      objectFit: 'cover',
+                      borderTopLeftRadius: 8,
+                      borderTopRightRadius: 8
+                    }}
+                  />
+                  <Box sx={{ p: 2 }}>
+                    <Typography 
+                      variant="subtitle1" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        mb: 1,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      {relatedBlog.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(relatedBlog.created_at || relatedBlog.date).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-        </Paper>
-        
-        {/* Sample comments */}
-        <Box>
-          <Box sx={{ mb: 3, pb: 3, borderBottom: '1px solid #eee' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Avatar sx={{ width: 40, height: 40, mr: 2 }}>M</Avatar>
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                  Michael
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  26/04/2023, 07:27:42
-                </Typography>
-              </Box>
-            </Box>
-            <Typography variant="body2">
-              https://xyz.hu/forums/index.php?/topic/5987-king-ring/
-            </Typography>
-            <Box sx={{ mt: 1 }}>
-              <Button 
-                size="small" 
-                sx={{ 
-                  color: 'text.secondary', 
-                  textTransform: 'none', 
-                  p: 0,
-                  minWidth: 'auto',
-                  mr: 2
-                }}
-              >
-                Reply
-              </Button>
-            </Box>
-          </Box>
-          
-          <Box sx={{ mb: 3, pb: 3, borderBottom: '1px solid #eee' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Avatar sx={{ width: 40, height: 40, mr: 2 }}>A</Avatar>
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                  Akshay
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  14/04/2023, 13:10:51
-                </Typography>
-              </Box>
-            </Box>
-            <Typography variant="body2">
-              Hello Testing
-            </Typography>
-            <Box sx={{ mt: 1 }}>
-              <Button 
-                size="small" 
-                sx={{ 
-                  color: 'text.secondary', 
-                  textTransform: 'none', 
-                  p: 0,
-                  minWidth: 'auto',
-                  mr: 2
-                }}
-              >
-                Reply
-              </Button>
-            </Box>
-          </Box>
         </Box>
-      </Box>
+      )}
     </Container>
   );
 };
