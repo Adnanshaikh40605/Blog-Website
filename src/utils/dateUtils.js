@@ -3,49 +3,42 @@
  */
 
 /**
- * Format a date string or Date object to a human-readable format
- * @param {string|Date} dateInput - Date string or Date object
- * @param {Object} options - Intl.DateTimeFormat options
+ * Format a date string to a human-readable format
+ * @param {string} dateString - The date string to format
  * @returns {string} Formatted date string
  */
-export const formatDate = (dateInput, options = {}) => {
-  if (!dateInput) return '';
+export const formatDate = (dateString) => {
+  if (!dateString) return '';
   
   try {
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    const date = new Date(dateString);
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
-      return '';
+      return dateString;
     }
     
-    // Default options
-    const defaultOptions = {
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
-    };
-    
-    // Merge default options with provided options
-    const mergedOptions = { ...defaultOptions, ...options };
-    
-    return date.toLocaleDateString('en-US', mergedOptions);
+    });
   } catch (error) {
     console.error('Error formatting date:', error);
-    return '';
+    return dateString;
   }
 };
 
 /**
- * Format a date string or Date object to a relative time format (e.g., "2 days ago")
- * @param {string|Date} dateInput - Date string or Date object
+ * Get relative time from date (e.g., "5 minutes ago", "2 days ago")
+ * @param {string} dateString - The date string to format
  * @returns {string} Relative time string
  */
-export const getRelativeTime = (dateInput) => {
-  if (!dateInput) return '';
+export const getRelativeTime = (dateString) => {
+  if (!dateString) return '';
   
   try {
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    const date = new Date(dateString);
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
@@ -61,26 +54,26 @@ export const getRelativeTime = (dateInput) => {
     
     const diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) {
-      return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
+      return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
     }
     
     const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) {
-      return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
     }
     
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 30) {
-      return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
+      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
     }
     
     const diffInMonths = Math.floor(diffInDays / 30);
     if (diffInMonths < 12) {
-      return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
+      return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
     }
     
     const diffInYears = Math.floor(diffInMonths / 12);
-    return `${diffInYears} ${diffInYears === 1 ? 'year' : 'years'} ago`;
+    return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
   } catch (error) {
     console.error('Error calculating relative time:', error);
     return '';

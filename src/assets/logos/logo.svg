@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="#ffffff" stroke="#ff5a5f" stroke-width="6"/>
+  
+  <!-- Letter B -->
+  <path d="M70,60 Q70,50 80,50 H110 Q130,50 130,70 Q130,85 115,90 Q135,95 135,115 Q135,135 115,135 H80 Q70,135 70,125 Z" 
+        fill="none" stroke="#333333" stroke-width="8" stroke-linejoin="round"/>
+  
+  <!-- Inner shapes for B -->
+  <path d="M85,65 H105 Q115,65 115,75 Q115,85 105,85 H85 Z" fill="#ff5a5f"/>
+  <path d="M85,100 H110 Q120,100 120,110 Q120,120 110,120 H85 Z" fill="#ff5a5f"/>
+  
+  <!-- Document lines -->
+  <line x1="150" y1="70" x2="170" y2="70" stroke="#333333" stroke-width="6" stroke-linecap="round"/>
+  <line x1="150" y1="90" x2="170" y2="90" stroke="#333333" stroke-width="6" stroke-linecap="round"/>
+  <line x1="150" y1="110" x2="170" y2="110" stroke="#333333" stroke-width="6" stroke-linecap="round"/>
+</svg> 

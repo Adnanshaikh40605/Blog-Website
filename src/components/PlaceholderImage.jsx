@@ -1,34 +1,34 @@
 import React from 'react';
+import { Box, Typography } from '@mui/material';
 
-const PlaceholderImage = ({ width = 200, height = 200, text = 'Placeholder Image', bgColor = '#f0f0f0', textColor = '#333' }) => {
-  // Convert width and height to numbers for calculations
-  const numWidth = typeof width === 'string' && width.includes('%') ? 200 : parseInt(width) || 200;
-  const numHeight = typeof height === 'string' && height.includes('%') ? 200 : parseInt(height) || 200;
-  
-  // Calculate font size based on numeric dimensions
-  const fontSize = Math.min(numWidth, numHeight) / 10;
-  
+/**
+ * PlaceholderImage component to display when actual images fail to load
+ * @param {Object} props - Component props
+ * @param {string|number} props.width - Width of the placeholder
+ * @param {string|number} props.height - Height of the placeholder
+ * @param {string} props.text - Text to display inside the placeholder
+ */
+const PlaceholderImage = ({ width, height, text }) => {
   return (
-    <svg
-      width={width}
-      height={height}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox={`0 0 ${numWidth} ${numHeight}`}
-      style={{ maxWidth: '100%' }}
+    <Box
+      sx={{
+        width: width,
+        height: height,
+        backgroundColor: '#f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#999',
+        fontSize: '0.8rem',
+        textAlign: 'center',
+        padding: 2,
+        borderRadius: '4px',
+      }}
     >
-      <rect width="100%" height="100%" fill={bgColor} />
-      <text
-        x="50%"
-        y="50%"
-        dominantBaseline="middle"
-        textAnchor="middle"
-        fill={textColor}
-        fontFamily="Arial, sans-serif"
-        fontSize={`${fontSize}px`}
-      >
-        {text}
-      </text>
-    </svg>
+      <Typography variant="body2" color="inherit">
+        {text || 'Image'}
+      </Typography>
+    </Box>
   );
 };
 

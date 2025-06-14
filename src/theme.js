@@ -85,8 +85,10 @@ const theme = createTheme({
           borderRadius: 8,
           padding: '8px 16px',
           boxShadow: 'none',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
           '&:hover': {
             boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            transform: 'translateY(-2px)',
           },
         },
         containedPrimary: {
@@ -119,6 +121,11 @@ const theme = createTheme({
           borderRadius: 12,
           boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
           overflow: 'hidden',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-8px)',
+            boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
+          },
         },
       },
     },
@@ -153,7 +160,8 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+          boxShadow: 'none',
+          borderBottom: '1px solid #e0e0e0',
         },
       },
     },
@@ -162,6 +170,7 @@ const theme = createTheme({
         root: {
           '& .MuiPaginationItem-root': {
             margin: '0 4px',
+            borderRadius: 8,
           },
         },
       },
@@ -177,6 +186,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textDecoration: 'none',
+          transition: 'color 0.2s ease',
           '&:hover': {
             textDecoration: 'none',
           },
@@ -189,6 +199,61 @@ const theme = createTheme({
           backgroundColor: '#ff5a5f',
         },
       },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 500,
+          borderRadius: 16,
+        },
+        colorSecondary: {
+          backgroundColor: '#ff5a5f',
+        },
+      },
+    },
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          '@media (min-width: 600px)': {
+            paddingLeft: 24,
+            paddingRight: 24,
+          },
+          maxWidth: {
+            lg: '1140px',
+          }
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        select: {
+          paddingTop: 12,
+          paddingBottom: 12,
+        }
+      }
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.9rem',
+        }
+      }
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          minHeight: 40,
+        }
+      }
+    }
+  },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 960,
+      lg: 1140,
+      xl: 1920,
     },
   },
 });

@@ -18,9 +18,10 @@ const BlogCard = ({ blog }) => {
         display: 'flex', 
         flexDirection: 'column', 
         height: '100%',
-        borderRadius: '12px',
+        borderRadius: '8px',
         overflow: 'hidden',
         transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
         '&:hover': {
           transform: 'translateY(-8px)',
           boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
@@ -38,7 +39,7 @@ const BlogCard = ({ blog }) => {
             onError={() => setImageError(true)}
           />
         ) : (
-          <PlaceholderImage width={345} height={200} text="Blog Image" />
+          <PlaceholderImage width="100%" height={200} text="Blog Image" />
         )}
         {blog.category && (
           <Chip
@@ -50,15 +51,19 @@ const BlogCard = ({ blog }) => {
               top: 10,
               right: 10,
               fontWeight: 500,
+              textTransform: 'capitalize',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              fontSize: '0.7rem',
+              height: '22px',
             }}
           />
         )}
       </Box>
-      <CardContent sx={{ flexGrow: 1, p: 3 }}>
+      <CardContent sx={{ flexGrow: 1, p: 3, pb: '16px !important' }}>
         <Typography 
           variant="body2" 
           color="text.secondary" 
-          sx={{ mb: 1, display: 'block' }}
+          sx={{ mb: 1, display: 'block', fontWeight: 500, fontSize: '0.8rem' }}
         >
           {formattedDate}
         </Typography>
@@ -68,7 +73,7 @@ const BlogCard = ({ blog }) => {
           component="h3" 
           sx={{ 
             fontWeight: '600',
-            fontSize: '1.1rem',
+            fontSize: '1rem',
             lineHeight: 1.3,
             mb: 2,
             overflow: 'hidden',
@@ -76,6 +81,7 @@ const BlogCard = ({ blog }) => {
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
+            minHeight: '2.6rem', // Ensures consistent height even with single line titles
           }}
         >
           {blog.title}
@@ -89,6 +95,7 @@ const BlogCard = ({ blog }) => {
             p: 0, 
             fontWeight: 600,
             textTransform: 'none',
+            fontSize: '0.85rem',
             '&:hover': {
               backgroundColor: 'transparent',
             },
@@ -102,7 +109,7 @@ const BlogCard = ({ blog }) => {
           <ArrowForwardIcon 
             sx={{ 
               ml: 0.5, 
-              fontSize: '1rem',
+              fontSize: '0.85rem',
               transition: 'transform 0.2s ease'
             }} 
           />
