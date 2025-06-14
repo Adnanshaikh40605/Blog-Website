@@ -2,8 +2,11 @@ import React from 'react';
 import { Card, CardContent, CardMedia, Typography, Button, Box } from '@mui/material';
 import { Link } from 'react-router-dom';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import PlaceholderImage from './PlaceholderImage';
 
 const BlogCard = ({ blog }) => {
+  const [imageError, setImageError] = React.useState(false);
+
   return (
     <Card 
       elevation={0}
@@ -20,14 +23,19 @@ const BlogCard = ({ blog }) => {
         }
       }}
     >
-      <Box sx={{ position: 'relative' }}>
-        <CardMedia
-          component="img"
-          height="200"
-          image={blog.image || 'https://via.placeholder.com/345x200.png?text=Blog+Image'}
-          alt={blog.title}
-          sx={{ objectFit: 'cover' }}
-        />
+      <Box sx={{ position: 'relative', height: '200px' }}>
+        {!imageError && blog.image ? (
+          <CardMedia
+            component="img"
+            height="200"
+            image={blog.image}
+            alt={blog.title}
+            sx={{ objectFit: 'cover' }}
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <PlaceholderImage width={345} height={200} text="Blog Image" />
+        )}
       </Box>
       <CardContent sx={{ flexGrow: 1, p: 3 }}>
         <Typography 

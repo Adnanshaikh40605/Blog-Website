@@ -4,22 +4,28 @@ import { Link } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import PlaceholderImage from './PlaceholderImage';
 
 const Header = () => {
+  const [logoError, setLogoError] = React.useState(false);
+
   return (
     <AppBar position="static" color="primary" elevation={0} sx={{ borderBottom: '1px solid #e0e0e0' }}>
       <Container>
         <Toolbar sx={{ padding: { xs: '0.5rem 0', md: '0.5rem 0' }, display: 'flex', justifyContent: 'space-between' }}>
           <Box component={Link} to="/" sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
-            <img 
-              src="/images/logo.png" 
-              alt="Vacation BNA" 
-              style={{ height: '40px', marginRight: '8px' }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/120x40?text=Vacation+BNA';
-              }}
-            />
+            <Box sx={{ height: '40px', width: '120px', mr: 1, display: 'flex', alignItems: 'center' }}>
+              {!logoError ? (
+                <img 
+                  src="/images/logo.png" 
+                  alt="Vacation BNA" 
+                  style={{ height: '40px', width: '120px', objectFit: 'contain' }}
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <PlaceholderImage width={120} height={40} text="Vacation BNA" />
+              )}
+            </Box>
             <Typography variant="h6" sx={{ fontWeight: 'bold', display: { xs: 'none', sm: 'block' } }}>
               Vacation BNA
             </Typography>

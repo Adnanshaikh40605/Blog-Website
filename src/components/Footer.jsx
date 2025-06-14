@@ -2,23 +2,29 @@ import React from 'react';
 import { Box, Container, Grid, Typography, Link, IconButton, Divider } from '@mui/material';
 import { Facebook, Twitter, Instagram, LinkedIn, YouTube } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
+import PlaceholderImage from './PlaceholderImage';
 
 const Footer = () => {
+  const [logoError, setLogoError] = React.useState(false);
+
   return (
     <Box sx={{ bgcolor: '#f8f9fa', color: '#333', pt: 6, pb: 3 }} component="footer">
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           <Grid item xs={12} sm={6} md={3}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <img 
-                src="/images/logo.png" 
-                alt="Vacation BNA" 
-                style={{ height: '40px', marginRight: '8px' }}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'https://via.placeholder.com/120x40?text=Vacation+BNA';
-                }}
-              />
+              <Box sx={{ height: '40px', width: '40px', mr: 1 }}>
+                {!logoError ? (
+                  <img 
+                    src="/images/logo.png" 
+                    alt="Vacation BNA" 
+                    style={{ height: '40px', marginRight: '8px' }}
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <PlaceholderImage width={40} height={40} text="Logo" />
+                )}
+              </Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                 Vacationbna
               </Typography>
