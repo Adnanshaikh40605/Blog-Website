@@ -103,3 +103,5 @@ This project is licensed under the MIT License.
 - Design inspiration from modern blog websites
 - Material-UI for the component library
 - Vite for the fast development experience
+
+adnan shaikh manzoor
