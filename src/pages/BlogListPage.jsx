@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Grid, TextField, Box, Typography, Pagination, MenuItem, Select, FormControl, InputLabel, InputAdornment, CircularProgress, Button, Chip } from '@mui/material';
+import { Container, Grid, TextField, Box, Typography, Pagination, MenuItem, Select, FormControl, InputLabel, InputAdornment, CircularProgress, Button, Chip, useMediaQuery, useTheme } from '@mui/material';
 import BlogCard from '../components/BlogCard';
 import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -20,6 +20,20 @@ const BlogListPage = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [apiUrl, setApiUrl] = useState('');
+  
+  // Get theme and media query for responsive design
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+
+  // Add smooth scrolling to the whole page
+  useEffect(() => {
+    document.documentElement.style.scrollBehavior = 'smooth';
+    
+    return () => {
+      document.documentElement.style.scrollBehavior = '';
+    };
+  }, []);
 
   // Fetch blogs function (extracted to be reusable)
   const fetchBlogs = useCallback(async () => {
@@ -90,7 +104,7 @@ const BlogListPage = () => {
     return () => clearTimeout(timeoutId);
   }, [searchTerm, page, fetchBlogs]);
 
-  // Handle page change
+  // Handle page change with smooth scrolling
   const handlePageChange = (event, value) => {
     setPage(value);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -149,7 +163,7 @@ const BlogListPage = () => {
   const displayBlogs = shouldUseMockData ? mockBlogs : sortedBlogs;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
       <Typography 
         variant="h4" 
         component="h1" 
@@ -157,9 +171,9 @@ const BlogListPage = () => {
         gutterBottom 
         sx={{ 
           fontWeight: 'bold',
-          mb: 4,
+          mb: { xs: 3, md: 4 },
           position: 'relative',
-          fontSize: '2rem',
+          fontSize: { xs: '1.75rem', md: '2rem' },
           '&:after': {
             content: '""',
             position: 'absolute',
@@ -176,7 +190,7 @@ const BlogListPage = () => {
         Blog Articles
       </Typography>
 
-      <Grid container spacing={2} sx={{ mb: 4 }}>
+      <Grid container spacing={2} sx={{ mb: { xs: 3, md: 4 } }}>
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth
@@ -249,13 +263,13 @@ const BlogListPage = () => {
         <Grid item xs={6} md={3}>
           <FormControl fullWidth>
             <InputLabel id="sort-select-label" sx={{ display: 'flex', alignItems: 'center' }}>
-              <SortIcon sx={{ fontSize: '1rem', mr: 0.5 }} /> Newest First
+              <SortIcon sx={{ fontSize: '1rem', mr: 0.5 }} /> Sort By
             </InputLabel>
             <Select
               labelId="sort-select-label"
               id="sort-select"
               value={sortOrder}
-              label="Newest First"
+              label="Sort By"
               onChange={(e) => setSortOrder(e.target.value)}
               sx={{
                 borderRadius: '8px',
@@ -268,129 +282,97 @@ const BlogListPage = () => {
                 },
               }}
             >
-              <MenuItem value="newest">
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <SortIcon sx={{ mr: 1, transform: 'rotate(180deg)', fontSize: '1rem' }} />
-                  Newest First
-                </Box>
-              </MenuItem>
-              <MenuItem value="oldest">
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <SortIcon sx={{ mr: 1, fontSize: '1rem' }} />
-                  Oldest First
-                </Box>
-              </MenuItem>
+              <MenuItem value="newest">Newest First</MenuItem>
+              <MenuItem value="oldest">Oldest First</MenuItem>
             </Select>
           </FormControl>
         </Grid>
       </Grid>
 
-      {error ? (
-        <ErrorMessage 
-          message={error} 
-          apiUrl={apiUrl}
-          onRetry={() => fetchBlogs(page)}
-          loading={loading}
-          sx={{ mb: 4 }}
-        />
-      ) : loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress color="secondary" />
+      {error && (
+        <Box sx={{ mb: 4 }}>
+          <ErrorMessage 
+            message={error} 
+            apiUrl={apiUrl}
+            onRetry={fetchBlogs}
+          />
         </Box>
-      ) : (
+      )}
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : displayBlogs.length > 0 ? (
         <>
-          <Grid container spacing={3}>
-            {displayBlogs.map(blog => (
-              <Grid item key={blog.id} xs={12} sm={6} md={4}>
-                <BlogCard blog={blog} />
+          <Grid container spacing={{ xs: 2, md: 3 }}>
+            {displayBlogs.map((blog) => (
+              <Grid item key={blog.id || blog.slug} xs={12} sm={6} md={4}>
+                <BlogCard 
+                  blog={blog} 
+                  onClick={() => {
+                    // Smooth scroll to top when clicking a blog
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                />
               </Grid>
             ))}
           </Grid>
 
-          {displayBlogs.length === 0 && (
+          {totalPages > 1 && (
             <Box sx={{ 
-              textAlign: 'center', 
-              py: 8, 
-              px: 3,
-              border: '1px dashed #e0e0e0',
-              borderRadius: '12px',
-              backgroundColor: '#f9f9f9'
+              display: 'flex', 
+              justifyContent: 'center', 
+              mt: { xs: 3, md: 5 }, 
+              mb: { xs: 2, md: 3 } 
             }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>No blogs found matching your criteria.</Typography>
-              <Button 
-                variant="outlined" 
-                color="secondary" 
-                startIcon={<RefreshIcon />}
-                onClick={() => {
-                  setSearchTerm('');
-                  setCategory('all');
-                  setSortOrder('newest');
-                  setPage(1);
+              <Pagination 
+                count={totalPages} 
+                page={page} 
+                onChange={handlePageChange} 
+                color="primary"
+                size={isMobile ? "small" : "medium"}
+                siblingCount={isMobile ? 0 : 1}
+                showFirstButton={!isMobile}
+                showLastButton={!isMobile}
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    borderRadius: '8px',
+                  },
+                  '& .Mui-selected': {
+                    fontWeight: 'bold',
+                  }
                 }}
-              >
-                Reset Filters
-              </Button>
+              />
             </Box>
           )}
-
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5, mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Button 
-                variant="outlined" 
-                color="secondary" 
-                sx={{ 
-                  minWidth: 'auto', 
-                  px: 1.5, 
-                  py: 0.5, 
-                  mr: 1,
-                  borderColor: '#e0e0e0',
-                  color: '#666',
-                  '&:hover': {
-                    borderColor: '#ff5a5f',
-                    color: '#ff5a5f',
-                  }
-                }}
-                disabled={page <= 1}
-                onClick={() => handlePageChange(null, page - 1)}
-              >
-                Previous
-              </Button>
-              <Button 
-                variant="contained" 
-                color="secondary" 
-                sx={{ 
-                  minWidth: 'auto', 
-                  px: 1.5, 
-                  py: 0.5, 
-                  mx: 1,
-                  fontWeight: 'bold'
-                }}
-              >
-                Page {page}
-              </Button>
-              <Button 
-                variant="outlined" 
-                color="secondary" 
-                sx={{ 
-                  minWidth: 'auto', 
-                  px: 1.5, 
-                  py: 0.5, 
-                  ml: 1,
-                  borderColor: '#e0e0e0',
-                  color: '#666',
-                  '&:hover': {
-                    borderColor: '#ff5a5f',
-                    color: '#ff5a5f',
-                  }
-                }}
-                disabled={page >= totalPages}
-                onClick={() => handlePageChange(null, page + 1)}
-              >
-                Next
-              </Button>
-            </Box>
-          </Box>
         </>
+      ) : (
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          py: 8 
+        }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No blogs found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+            {searchTerm ? `No results matching "${searchTerm}"` : 'No blogs available at the moment.'}
+          </Typography>
+          {searchTerm && (
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              startIcon={<RefreshIcon />}
+              onClick={() => setSearchTerm('')}
+              sx={{ borderRadius: '8px' }}
+            >
+              Clear Search
+            </Button>
+          )}
+        </Box>
       )}
     </Container>
   );

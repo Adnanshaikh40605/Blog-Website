@@ -1,12 +1,16 @@
 import React from 'react';
-import { Card, CardContent, CardMedia, Typography, Button, Box, Chip } from '@mui/material';
+import { Card, CardContent, CardMedia, Typography, Button, Box, Chip, useMediaQuery, useTheme } from '@mui/material';
 import { Link } from 'react-router-dom';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import PlaceholderImage from './PlaceholderImage';
 import { formatDate } from '../utils/dateUtils';
 
-const BlogCard = ({ blog }) => {
+const BlogCard = ({ blog, onClick }) => {
   const [imageError, setImageError] = React.useState(false);
+  
+  // Get theme for responsive design
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Format the date - use created_at from API or fallback to date
   const formattedDate = formatDate(blog.created_at || blog.date);
@@ -28,18 +32,18 @@ const BlogCard = ({ blog }) => {
         }
       }}
     >
-      <Box sx={{ position: 'relative', height: '200px' }}>
+      <Box sx={{ position: 'relative', height: { xs: '180px', sm: '200px' } }}>
         {!imageError && (blog.featured_image_url || blog.image) ? (
           <CardMedia
             component="img"
-            height="200"
+            height={isMobile ? "180" : "200"}
             image={blog.featured_image_url || blog.image}
             alt={blog.title}
             sx={{ objectFit: 'cover' }}
             onError={() => setImageError(true)}
           />
         ) : (
-          <PlaceholderImage width="100%" height={200} text="Blog Image" />
+          <PlaceholderImage width="100%" height={isMobile ? 180 : 200} text="Blog Image" />
         )}
         {blog.category && (
           <Chip
@@ -59,7 +63,11 @@ const BlogCard = ({ blog }) => {
           />
         )}
       </Box>
-      <CardContent sx={{ flexGrow: 1, p: 3, pb: '16px !important' }}>
+      <CardContent sx={{ 
+        flexGrow: 1, 
+        p: { xs: 2, sm: 3 }, 
+        pb: '16px !important'
+      }}>
         <Typography 
           variant="body2" 
           color="text.secondary" 
@@ -73,7 +81,7 @@ const BlogCard = ({ blog }) => {
           component="h3" 
           sx={{ 
             fontWeight: '600',
-            fontSize: '1rem',
+            fontSize: { xs: '0.95rem', sm: '1rem' },
             lineHeight: 1.3,
             mb: 2,
             overflow: 'hidden',
@@ -91,6 +99,7 @@ const BlogCard = ({ blog }) => {
           component={Link} 
           to={`/blog/${blog.slug || blog.id}`} 
           color="secondary" 
+          onClick={onClick}
           sx={{ 
             p: 0, 
             fontWeight: 600,
