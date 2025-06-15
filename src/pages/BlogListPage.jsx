@@ -35,6 +35,45 @@ const BlogListPage = () => {
     };
   }, []);
 
+  // Add viewport meta tag for proper mobile scaling
+  useEffect(() => {
+    // Set viewport meta tag to prevent zooming issues
+    const viewport = document.querySelector('meta[name=viewport]');
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+      document.head.appendChild(meta);
+    }
+
+    // Add custom CSS for blog titles
+    const style = document.createElement('style');
+    style.textContent = `
+      .blog-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        word-break: break-word;
+        hyphens: auto;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      // Restore default viewport settings when component unmounts
+      const viewport = document.querySelector('meta[name=viewport]');
+      if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+      }
+      // Remove custom CSS
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // Fetch blogs function (extracted to be reusable)
   const fetchBlogs = useCallback(async () => {
     setLoading(true);
@@ -163,7 +202,15 @@ const BlogListPage = () => {
   const displayBlogs = shouldUseMockData ? mockBlogs : sortedBlogs;
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
+    <Container 
+      maxWidth="lg" 
+      sx={{ 
+        py: { xs: 2, md: 4 },
+        px: { xs: 1, sm: 2, md: 3 },
+        overflowX: 'hidden',
+        width: '100%',
+      }}
+    >
       <Typography 
         variant="h4" 
         component="h1" 
@@ -171,16 +218,16 @@ const BlogListPage = () => {
         gutterBottom 
         sx={{ 
           fontWeight: 'bold',
-          mb: { xs: 3, md: 4 },
+          mb: { xs: 2, md: 4 },
           position: 'relative',
-          fontSize: { xs: '1.75rem', md: '2rem' },
+          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
           '&:after': {
             content: '""',
             position: 'absolute',
-            bottom: '-12px',
+            bottom: '-10px',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: '80px',
+            width: { xs: '60px', md: '80px' },
             height: '3px',
             backgroundColor: 'secondary.main',
             borderRadius: '2px',
@@ -190,7 +237,7 @@ const BlogListPage = () => {
         Blog Articles
       </Typography>
 
-      <Grid container spacing={2} sx={{ mb: { xs: 3, md: 4 } }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, md: 4 } }}>
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth
@@ -201,14 +248,15 @@ const BlogListPage = () => {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon color="action" />
+                  <SearchIcon color="action" sx={{ fontSize: { xs: '1.2rem', md: '1.5rem' } }} />
                 </InputAdornment>
               ),
+              style: { fontSize: isMobile ? '0.9rem' : '1rem' }
             }}
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: '8px',
-                height: '46px',
+                height: { xs: '42px', md: '46px' },
                 transition: 'box-shadow 0.3s ease',
                 '&:hover': {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
@@ -222,18 +270,24 @@ const BlogListPage = () => {
         </Grid>
         <Grid item xs={6} md={3}>
           <FormControl fullWidth>
-            <InputLabel id="category-select-label" sx={{ display: 'flex', alignItems: 'center' }}>
-              <FilterListIcon sx={{ fontSize: '1rem', mr: 0.5 }} /> All Categories
+            <InputLabel id="category-select-label" sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
+            }}>
+              <FilterListIcon sx={{ fontSize: { xs: '0.9rem', md: '1rem' }, mr: 0.5 }} /> 
+              {isMobile ? 'Category' : 'All Categories'}
             </InputLabel>
             <Select
               labelId="category-select-label"
               id="category-select"
               value={category}
-              label="All Categories"
+              label={isMobile ? 'Category' : 'All Categories'}
               onChange={(e) => setCategory(e.target.value)}
               sx={{
                 borderRadius: '8px',
-                height: '46px',
+                height: { xs: '42px', md: '46px' },
+                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
                 '& .MuiSelect-select': {
                   display: 'flex',
                   alignItems: 'center',
@@ -243,16 +297,25 @@ const BlogListPage = () => {
               }}
             >
               {categories.map((cat) => (
-                <MenuItem key={cat || 'uncategorized'} value={cat || 'uncategorized'}>
-                  {cat === 'all' ? 'All Categories' : (
+                <MenuItem 
+                  key={cat || 'uncategorized'} 
+                  value={cat || 'uncategorized'}
+                  sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' } }}
+                >
+                  {cat === 'all' ? (isMobile ? 'All' : 'All Categories') : (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Chip 
                         size="small" 
                         label={cat || 'Uncategorized'} 
                         color={cat === category ? 'secondary' : 'default'} 
-                        sx={{ mr: 1, textTransform: 'capitalize' }} 
+                        sx={{ 
+                          mr: 1, 
+                          textTransform: 'capitalize',
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                          height: { xs: '20px', sm: '24px' }
+                        }} 
                       />
-                      {cat || 'Uncategorized'}
+                      {isMobile ? '' : (cat || 'Uncategorized')}
                     </Box>
                   )}
                 </MenuItem>
@@ -262,18 +325,24 @@ const BlogListPage = () => {
         </Grid>
         <Grid item xs={6} md={3}>
           <FormControl fullWidth>
-            <InputLabel id="sort-select-label" sx={{ display: 'flex', alignItems: 'center' }}>
-              <SortIcon sx={{ fontSize: '1rem', mr: 0.5 }} /> Sort By
+            <InputLabel id="sort-select-label" sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
+            }}>
+              <SortIcon sx={{ fontSize: { xs: '0.9rem', md: '1rem' }, mr: 0.5 }} /> 
+              {isMobile ? 'Sort' : 'Sort By'}
             </InputLabel>
             <Select
               labelId="sort-select-label"
               id="sort-select"
               value={sortOrder}
-              label="Sort By"
+              label={isMobile ? 'Sort' : 'Sort By'}
               onChange={(e) => setSortOrder(e.target.value)}
               sx={{
                 borderRadius: '8px',
-                height: '46px',
+                height: { xs: '42px', md: '46px' },
+                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
                 '& .MuiSelect-select': {
                   display: 'flex',
                   alignItems: 'center',
@@ -282,15 +351,19 @@ const BlogListPage = () => {
                 },
               }}
             >
-              <MenuItem value="newest">Newest First</MenuItem>
-              <MenuItem value="oldest">Oldest First</MenuItem>
+              <MenuItem value="newest" sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' } }}>
+                {isMobile ? 'Newest' : 'Newest First'}
+              </MenuItem>
+              <MenuItem value="oldest" sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' } }}>
+                {isMobile ? 'Oldest' : 'Oldest First'}
+              </MenuItem>
             </Select>
           </FormControl>
         </Grid>
       </Grid>
 
       {error && (
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 3 }}>
           <ErrorMessage 
             message={error} 
             apiUrl={apiUrl}
@@ -300,12 +373,12 @@ const BlogListPage = () => {
       )}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: { xs: 4, md: 8 } }}>
+          <CircularProgress size={isMobile ? 30 : 40} />
         </Box>
       ) : displayBlogs.length > 0 ? (
         <>
-          <Grid container spacing={{ xs: 2, md: 3 }}>
+          <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
             {displayBlogs.map((blog) => (
               <Grid item key={blog.id || blog.slug} xs={12} sm={6} md={4}>
                 <BlogCard 
@@ -323,8 +396,8 @@ const BlogListPage = () => {
             <Box sx={{ 
               display: 'flex', 
               justifyContent: 'center', 
-              mt: { xs: 3, md: 5 }, 
-              mb: { xs: 2, md: 3 } 
+              mt: { xs: 2, md: 5 }, 
+              mb: { xs: 1, md: 3 } 
             }}>
               <Pagination 
                 count={totalPages} 
@@ -338,6 +411,9 @@ const BlogListPage = () => {
                 sx={{
                   '& .MuiPaginationItem-root': {
                     borderRadius: '8px',
+                    minWidth: { xs: '28px', md: '32px' },
+                    height: { xs: '28px', md: '32px' },
+                    fontSize: { xs: '0.8rem', md: '0.9rem' },
                   },
                   '& .Mui-selected': {
                     fontWeight: 'bold',
@@ -353,21 +429,39 @@ const BlogListPage = () => {
           flexDirection: 'column', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          py: 8 
+          py: { xs: 4, md: 8 } 
         }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
+          >
             No blogs found
           </Typography>
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            align="center" 
+            sx={{ 
+              mb: 3,
+              fontSize: { xs: '0.85rem', md: '0.9rem' },
+              px: 2
+            }}
+          >
             {searchTerm ? `No results matching "${searchTerm}"` : 'No blogs available at the moment.'}
           </Typography>
           {searchTerm && (
             <Button 
               variant="outlined" 
               color="primary" 
-              startIcon={<RefreshIcon />}
+              startIcon={<RefreshIcon sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }} />}
               onClick={() => setSearchTerm('')}
-              sx={{ borderRadius: '8px' }}
+              sx={{ 
+                borderRadius: '8px',
+                fontSize: { xs: '0.8rem', md: '0.9rem' },
+                py: { xs: 0.5, md: 0.75 }
+              }}
             >
               Clear Search
             </Button>

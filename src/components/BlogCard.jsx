@@ -29,21 +29,41 @@ const BlogCard = ({ blog, onClick }) => {
         '&:hover': {
           transform: 'translateY(-8px)',
           boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
-        }
+        },
+        width: '100%',
       }}
     >
-      <Box sx={{ position: 'relative', height: { xs: '180px', sm: '200px' } }}>
+      {/* Image Container with fixed aspect ratio */}
+      <Box 
+        sx={{ 
+          position: 'relative',
+          paddingTop: '56.25%', // 16:9 aspect ratio (9/16 = 0.5625 or 56.25%)
+          width: '100%',
+          backgroundColor: '#f5f5f5', // Background color for image container
+          overflow: 'hidden',
+        }}
+      >
         {!imageError && (blog.featured_image_url || blog.image) ? (
           <CardMedia
             component="img"
-            height={isMobile ? "180" : "200"}
             image={blog.featured_image_url || blog.image}
             alt={blog.title}
-            sx={{ objectFit: 'cover' }}
+            sx={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover', // This ensures the image covers the area without distortion
+              objectPosition: 'center', // Center the image
+            }}
             onError={() => setImageError(true)}
+            loading="lazy"
           />
         ) : (
-          <PlaceholderImage width="100%" height={isMobile ? 180 : 200} text="Blog Image" />
+          <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+            <PlaceholderImage width="100%" height="100%" text="Blog Image" />
+          </Box>
         )}
         {blog.category && (
           <Chip
@@ -52,26 +72,36 @@ const BlogCard = ({ blog, onClick }) => {
             color="secondary"
             sx={{
               position: 'absolute',
-              top: 10,
-              right: 10,
+              top: 8,
+              right: 8,
               fontWeight: 500,
               textTransform: 'capitalize',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              fontSize: '0.7rem',
-              height: '22px',
+              fontSize: { xs: '0.65rem', sm: '0.7rem' },
+              height: { xs: '20px', sm: '22px' },
+              '& .MuiChip-label': {
+                px: { xs: 0.8, sm: 1 },
+              }
             }}
           />
         )}
       </Box>
       <CardContent sx={{ 
         flexGrow: 1, 
-        p: { xs: 2, sm: 3 }, 
-        pb: '16px !important'
+        p: { xs: 1.5, sm: 2, md: 3 }, 
+        pb: '16px !important',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
         <Typography 
           variant="body2" 
           color="text.secondary" 
-          sx={{ mb: 1, display: 'block', fontWeight: 500, fontSize: '0.8rem' }}
+          sx={{ 
+            mb: 0.5, 
+            display: 'block', 
+            fontWeight: 500, 
+            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' }
+          }}
         >
           {formattedDate}
         </Typography>
@@ -79,17 +109,21 @@ const BlogCard = ({ blog, onClick }) => {
           gutterBottom 
           variant="h6" 
           component="h3" 
+          className="blog-title"
           sx={{ 
             fontWeight: '600',
-            fontSize: { xs: '0.95rem', sm: '1rem' },
+            fontSize: { xs: '0.9rem', sm: '0.95rem', md: '1rem' },
             lineHeight: 1.3,
-            mb: 2,
+            mb: { xs: 1.5, sm: 2 },
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
-            WebkitLineClamp: 2,
+            WebkitLineClamp: 3, // Increased from 2 to 3 lines
             WebkitBoxOrient: 'vertical',
-            minHeight: '2.6rem', // Ensures consistent height even with single line titles
+            minHeight: { xs: '3.6rem', sm: '3.9rem' }, // Increased to accommodate 3 lines
+            wordBreak: 'break-word',
+            width: '100%', // Ensure full width
+            maxWidth: '100%', // Prevent overflow
           }}
         >
           {blog.title}
@@ -104,7 +138,9 @@ const BlogCard = ({ blog, onClick }) => {
             p: 0, 
             fontWeight: 600,
             textTransform: 'none',
-            fontSize: '0.85rem',
+            fontSize: { xs: '0.8rem', sm: '0.85rem' },
+            mt: 'auto',
+            alignSelf: 'flex-start',
             '&:hover': {
               backgroundColor: 'transparent',
             },
@@ -118,7 +154,7 @@ const BlogCard = ({ blog, onClick }) => {
           <ArrowForwardIcon 
             sx={{ 
               ml: 0.5, 
-              fontSize: '0.85rem',
+              fontSize: { xs: '0.8rem', sm: '0.85rem' },
               transition: 'transform 0.2s ease'
             }} 
           />
