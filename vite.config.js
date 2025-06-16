@@ -18,6 +18,10 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    historyApiFallback: {
+      disableDotRule: true,
+      index: '/',
+    },
   },
   optimizeDeps: {
     esbuildOptions: {
@@ -26,4 +30,5 @@ export default defineConfig({
       },
     },
   },
+  base: '/',
 }); 

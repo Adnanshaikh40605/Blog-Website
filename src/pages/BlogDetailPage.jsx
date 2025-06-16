@@ -712,102 +712,119 @@ const BlogDetailPage = () => {
                 mb: { xs: 1.5, md: 3 } 
               }}
             >
-              Related Articles
+              Related Blogs
             </Typography>
             
-            <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2, sm: 3 },
+                borderRadius: '12px',
+                backgroundColor: 'background.paper',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+              }}
+            >
               {relatedBlogs.map((relatedBlog) => (
-                <Grid item xs={12} sm={6} md={4} key={relatedBlog.id || relatedBlog.slug}>
-                  <Card 
-                    component={Link} 
-                    to={`/blog/${relatedBlog.slug}`} 
-                    onClick={() => {
-                      // Scroll to top when clicking a related blog
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    sx={{ 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      height: '100%',
-                      textDecoration: 'none',
+                <Box
+                  key={relatedBlog.id || relatedBlog.slug}
+                  component={Link}
+                  to={`/blog/${relatedBlog.slug}`}
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    textDecoration: 'none',
+                    mb: 2,
+                    pb: 2,
+                    borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+                    '&:last-child': {
+                      mb: 0,
+                      pb: 0,
+                      borderBottom: 'none',
+                    },
+                    transition: 'transform 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateX(5px)',
+                    }
+                  }}
+                >
+                  {/* Blog Image */}
+                  <Box
+                    sx={{
+                      width: { xs: 68, sm: 80 },
+                      height: { xs: 68, sm: 80 },
                       borderRadius: '8px',
                       overflow: 'hidden',
-                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
-                      }
+                      flexShrink: 0,
+                      mr: { xs: 2, sm: 3 },
+                      bgcolor: '#f5f5f5',
                     }}
                   >
-                    <Box 
-                      sx={{ 
-                        position: 'relative',
-                        paddingTop: '56.25%', // 16:9 aspect ratio (9/16 = 0.5625 or 56.25%)
+                    <img
+                      src={getImageUrl(relatedBlog) || '/images/placeholder.jpg'}
+                      alt={relatedBlog.title}
+                      onError={(e) => {
+                        console.error("Related blog image failed to load:", e.target.src);
+                        e.target.src = '/images/placeholder.jpg';
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'center',
+                      }}
+                      loading="lazy"
+                    />
+                  </Box>
+                  
+                  {/* Blog Content */}
+                  <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                    <Typography
+                      variant="h6"
+                      component="h3"
+                      color="text.primary"
+                      sx={{
+                        fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
+                        fontWeight: 600,
+                        mb: 0.5,
                         overflow: 'hidden',
-                        backgroundColor: '#f5f5f5', // Add background color for image container
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
                       }}
                     >
-                      {/* Improved image handling with error state */}
-                      <Box
-                        component="img"
-                        src={getImageUrl(relatedBlog) || '/images/placeholder.jpg'}
-                        alt={relatedBlog.title}
-                        onError={(e) => {
-                          console.error("Related blog image failed to load:", e.target.src);
-                          e.target.src = '/images/placeholder.jpg';
-                        }}
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'center', // Center the image
-                        }}
-                        loading="lazy"
-                      />
-                    </Box>
-                    <Box sx={{ p: { xs: 1.5, sm: 2 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                      {relatedBlog.title}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                       {relatedBlog.category && (
-                        <Chip 
-                          label={relatedBlog.category} 
-                          size="small" 
+                        <Chip
+                          label={relatedBlog.category}
+                          size="small"
                           color="secondary"
-                          sx={{ alignSelf: 'flex-start', mb: 1, borderRadius: '4px', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            borderRadius: '4px',
+                            '& .MuiChip-label': { px: 1 }
+                          }}
                         />
                       )}
-                      <Typography 
-                        variant="h6" 
-                        component="h3" 
-                        color="text.primary"
-                        className="blog-title"
-                        sx={{ 
-                          fontSize: { xs: '0.9rem', sm: '1rem' }, 
-                          fontWeight: 600,
-                          mb: 1,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
-                          minHeight: { xs: '3.6rem', sm: '3.9rem' }, // Increased to match BlogCard
-                        }}
-                      >
-                        {relatedBlog.title}
-                      </Typography>
-                      <Typography 
-                        variant="caption" 
+                      <Typography
+                        variant="caption"
                         color="text.secondary"
-                        sx={{ mt: 'auto', pt: 1, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                        sx={{ fontSize: '0.7rem' }}
                       >
                         {formatDate(relatedBlog.date || relatedBlog.created_at)}
                       </Typography>
                     </Box>
-                  </Card>
-                </Grid>
+                  </Box>
+                </Box>
               ))}
-            </Grid>
+            </Paper>
           </Box>
 
           {/* Comments Section */}
