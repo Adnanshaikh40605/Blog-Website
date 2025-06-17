@@ -237,26 +237,74 @@ const BlogListPage = () => {
         Blog Articles
       </Typography>
 
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, md: 4 } }}>
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            placeholder="Search blogs..."
-            variant="outlined"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" sx={{ fontSize: { xs: '1.2rem', md: '1.5rem' } }} />
-                </InputAdornment>
-              ),
-              style: { fontSize: isMobile ? '0.9rem' : '1rem' }
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' }, 
+          gap: 2, 
+          mb: { xs: 3, md: 4 },
+          justifyContent: 'center',
+          alignItems: 'center',
+          maxWidth: '1100px',
+          mx: 'auto'
+        }}
+      >
+        <TextField
+          placeholder="Search blogs..."
+          variant="outlined"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" sx={{ fontSize: '1.2rem' }} />
+              </InputAdornment>
+            ),
+            sx: { 
+              borderRadius: '8px',
+              height: '46px',
+              fontSize: '0.95rem'
+            }
+          }}
+          sx={{
+            flexGrow: 1,
+            maxWidth: { xs: '100%', md: '250px' },
+            '& .MuiOutlinedInput-root': {
+              transition: 'box-shadow 0.3s ease',
+              '&:hover': {
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              },
+              '&.Mui-focused': {
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              },
+            }
+          }}
+        />
+
+        <FormControl sx={{ minWidth: { xs: '100%', md: '180px' } }}>
+          <Select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            displayEmpty
+            renderValue={(selected) => {
+              if (selected === 'all') {
+                return 'All Categories';
+              }
+              return selected || 'Uncategorized';
             }}
+            inputProps={{ 'aria-label': 'Filter by category' }}
             sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '8px',
-                height: { xs: '42px', md: '46px' },
+              borderRadius: '8px',
+              height: '46px',
+              fontSize: '0.95rem',
+              bgcolor: 'background.paper',
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+                py: 1.5,
+                px: 2,
+              },
+              '&.MuiOutlinedInput-root': {
                 transition: 'box-shadow 0.3s ease',
                 '&:hover': {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
@@ -266,101 +314,78 @@ const BlogListPage = () => {
                 },
               }
             }}
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <FormControl fullWidth>
-            <InputLabel id="category-select-label" sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
-            }}>
-              <FilterListIcon sx={{ fontSize: { xs: '0.9rem', md: '1rem' }, mr: 0.5 }} /> 
-              {isMobile ? 'Category' : 'All Categories'}
-            </InputLabel>
-            <Select
-              labelId="category-select-label"
-              id="category-select"
-              value={category}
-              label={isMobile ? 'Category' : 'All Categories'}
-              onChange={(e) => setCategory(e.target.value)}
-              sx={{
-                borderRadius: '8px',
-                height: { xs: '42px', md: '46px' },
-                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
-                '& .MuiSelect-select': {
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingTop: '8px',
-                  paddingBottom: '8px',
-                },
-              }}
-            >
-              {categories.map((cat) => (
-                <MenuItem 
-                  key={cat || 'uncategorized'} 
-                  value={cat || 'uncategorized'}
-                  sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' } }}
-                >
-                  {cat === 'all' ? (isMobile ? 'All' : 'All Categories') : (
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Chip 
-                        size="small" 
-                        label={cat || 'Uncategorized'} 
-                        color={cat === category ? 'secondary' : 'default'} 
-                        sx={{ 
-                          mr: 1, 
-                          textTransform: 'capitalize',
-                          fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                          height: { xs: '20px', sm: '24px' }
-                        }} 
-                      />
-                      {isMobile ? '' : (cat || 'Uncategorized')}
-                    </Box>
-                  )}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <FormControl fullWidth>
-            <InputLabel id="sort-select-label" sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
-            }}>
-              <SortIcon sx={{ fontSize: { xs: '0.9rem', md: '1rem' }, mr: 0.5 }} /> 
-              {isMobile ? 'Sort' : 'Sort By'}
-            </InputLabel>
-            <Select
-              labelId="sort-select-label"
-              id="sort-select"
-              value={sortOrder}
-              label={isMobile ? 'Sort' : 'Sort By'}
-              onChange={(e) => setSortOrder(e.target.value)}
-              sx={{
-                borderRadius: '8px',
-                height: { xs: '42px', md: '46px' },
-                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
-                '& .MuiSelect-select': {
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingTop: '8px',
-                  paddingBottom: '8px',
-                },
-              }}
-            >
-              <MenuItem value="newest" sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' } }}>
-                {isMobile ? 'Newest' : 'Newest First'}
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  borderRadius: '8px',
+                  mt: 0.5,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                }
+              }
+            }}
+          >
+            <MenuItem value="all" sx={{ fontSize: '0.95rem' }}>
+              All Categories
+            </MenuItem>
+            {categories.filter(cat => cat !== 'all').map((cat) => (
+              <MenuItem 
+                key={cat || 'uncategorized'} 
+                value={cat || 'uncategorized'}
+                sx={{ fontSize: '0.95rem' }}
+              >
+                {cat || 'Uncategorized'}
               </MenuItem>
-              <MenuItem value="oldest" sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' } }}>
-                {isMobile ? 'Oldest' : 'Oldest First'}
-              </MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: { xs: '100%', md: '160px' } }}>
+          <Select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            displayEmpty
+            renderValue={(selected) => {
+              if (selected === 'newest') return 'Newest First';
+              if (selected === 'oldest') return 'Oldest First';
+              return 'Sort By';
+            }}
+            inputProps={{ 'aria-label': 'Sort order' }}
+            sx={{
+              borderRadius: '8px',
+              height: '46px',
+              fontSize: '0.95rem',
+              bgcolor: 'background.paper',
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+                py: 1.5,
+                px: 2,
+              },
+              '&.MuiOutlinedInput-root': {
+                transition: 'box-shadow 0.3s ease',
+                '&:hover': {
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                },
+                '&.Mui-focused': {
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                },
+              }
+            }}
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  borderRadius: '8px',
+                  mt: 0.5,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                }
+              }
+            }}
+          >
+            <MenuItem value="newest" sx={{ fontSize: '0.95rem' }}>Newest First</MenuItem>
+            <MenuItem value="oldest" sx={{ fontSize: '0.95rem' }}>Oldest First</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
 
       {error && (
         <Box sx={{ mb: 3 }}>
@@ -396,30 +421,80 @@ const BlogListPage = () => {
             <Box sx={{ 
               display: 'flex', 
               justifyContent: 'center', 
-              mt: { xs: 2, md: 5 }, 
-              mb: { xs: 1, md: 3 } 
+              mt: { xs: 4, md: 5 }, 
+              mb: { xs: 2, md: 3 } 
             }}>
-              <Pagination 
-                count={totalPages} 
-                page={page} 
-                onChange={handlePageChange} 
-                color="primary"
-                size={isMobile ? "small" : "medium"}
-                siblingCount={isMobile ? 0 : 1}
-                showFirstButton={!isMobile}
-                showLastButton={!isMobile}
-                sx={{
-                  '& .MuiPaginationItem-root': {
-                    borderRadius: '8px',
-                    minWidth: { xs: '28px', md: '32px' },
-                    height: { xs: '28px', md: '32px' },
-                    fontSize: { xs: '0.8rem', md: '0.9rem' },
-                  },
-                  '& .Mui-selected': {
-                    fontWeight: 'bold',
-                  }
-                }}
-              />
+              <Box sx={{ 
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                maxWidth: '350px'
+              }}>
+                <Button
+                  variant="outlined"
+                  disabled={page === 1}
+                  onClick={() => handlePageChange(null, page - 1)}
+                  aria-label="Go to previous page"
+                  sx={{
+                    borderColor: 'rgba(0, 0, 0, 0.23)',
+                    color: page === 1 ? 'text.disabled' : 'text.primary',
+                    fontSize: '0.95rem',
+                    py: 1,
+                    px: 3,
+                    minWidth: '110px',
+                    textTransform: 'none',
+                    borderRadius: '4px',
+                    fontWeight: 400,
+                    backgroundColor: 'transparent',
+                    '&:hover': {
+                      backgroundColor: page === 1 ? 'transparent' : 'rgba(0, 0, 0, 0.04)',
+                      borderColor: page === 1 ? 'rgba(0, 0, 0, 0.23)' : 'rgba(0, 0, 0, 0.5)'
+                    }
+                  }}
+                >
+                  Previous
+                </Button>
+
+                <Box 
+                  sx={{ 
+                    fontWeight: 700,
+                    fontSize: '1.1rem',
+                    color: 'text.primary',
+                    mx: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  Page {page}
+                </Box>
+
+                <Button
+                  variant="outlined"
+                  disabled={page === totalPages}
+                  onClick={() => handlePageChange(null, page + 1)}
+                  aria-label="Go to next page"
+                  sx={{
+                    borderColor: 'rgba(0, 0, 0, 0.23)',
+                    color: page === totalPages ? 'text.disabled' : 'text.primary',
+                    fontSize: '0.95rem',
+                    py: 1,
+                    px: 3,
+                    minWidth: '110px',
+                    textTransform: 'none',
+                    borderRadius: '4px',
+                    fontWeight: 400,
+                    backgroundColor: 'transparent',
+                    '&:hover': {
+                      backgroundColor: page === totalPages ? 'transparent' : 'rgba(0, 0, 0, 0.04)',
+                      borderColor: page === totalPages ? 'rgba(0, 0, 0, 0.23)' : 'rgba(0, 0, 0, 0.5)'
+                    }
+                  }}
+                >
+                  Next
+                </Button>
+              </Box>
             </Box>
           )}
         </>
