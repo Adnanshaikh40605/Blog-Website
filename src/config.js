@@ -5,6 +5,7 @@
 // API configuration
 const API_CONFIG = {
   // Production API URL (Railway deployment)
+  // Note: If you're getting 500 errors, check the backend logs at Railway
   PRODUCTION_API_URL: import.meta.env.VITE_API_BASE_URL || 'https://backend-production-92ae.up.railway.app/api',
   
   // Development API URL (default)

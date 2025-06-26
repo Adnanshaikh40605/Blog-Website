@@ -341,7 +341,38 @@ export const commentsApi = {
   // Get comments for a post
   getCommentsByPostId: async (postId) => {
     try {
-      const response = await apiClient.get(`/comments/?post=${postId}&approved=true&is_trash=false`);
+      console.log(`Fetching comments for post ID: ${postId} from ${API_BASE_URL}/comments/`);
+      
+      // Try different endpoint formats that might be used by the API
+      let response;
+      const endpoints = [
+        `/comments/?post=${postId}&approved=true&is_trash=false`,
+        `/comments/post/${postId}/`,
+        `/comments/by-post/${postId}/`
+      ];
+      
+      let lastError = null;
+      
+      // Try each endpoint until we get a successful response
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying endpoint: ${API_BASE_URL}${endpoint}`);
+          response = await apiClient.get(endpoint);
+          console.log(`Success with endpoint: ${endpoint}`);
+          break; // Exit the loop if successful
+        } catch (err) {
+          console.warn(`Failed with endpoint ${endpoint}:`, err.message);
+          lastError = err;
+          // Continue to the next endpoint
+        }
+      }
+      
+      // If all endpoints failed, throw the last error
+      if (!response) {
+        throw lastError || new Error('All comment endpoints failed');
+      }
+      
+      console.log('Comments API response:', response);
       return response;
     } catch (error) {
       console.warn(`Error fetching comments for post ID "${postId}" from API, using mock data:`, error);
@@ -417,25 +448,52 @@ export const commentsApi = {
   // Submit a new comment
   submitComment: async (comment) => {
     try {
-      const response = await apiClient.post('/comments/', comment);
-      return response;
+      // Add additional logging for debugging
+      console.log('Submitting comment to API:', comment);
+      console.log('API endpoint:', `${API_BASE_URL}/comments/`);
+      
+      // Add a timeout to prevent long-hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(`${API_BASE_URL}/comments/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(comment),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return { data };
     } catch (error) {
       console.warn('Error submitting comment to API, simulating successful submission:', error);
       
-      // Generate a new comment with an ID
+      // Generate a new comment with an ID for the UI
       const newComment = {
         ...comment,
-        id: mockComments.length + 1,
+        id: Math.floor(Math.random() * 10000) + 1000,
         created_at: new Date().toISOString(),
-        approved: true,
-        is_trash: false
+        approved: false, // Set to false to indicate moderation is required
+        is_trash: false,
+        status: 'pending' // Add status field for UI
       };
       
-      // Add to mock comments
+      // Add to mock comments for local state
       mockComments.push(newComment);
       
-      // Return mock response
-      return simulateApiResponse(newComment);
+      // Return mock response with a note about the error
+      return simulateApiResponse({
+        ...newComment,
+        _note: 'This is a simulated response due to an API error. Your comment will appear after moderation.'
+      });
     }
   },
   

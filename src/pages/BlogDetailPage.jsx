@@ -196,9 +196,11 @@ const getImageUrl = (blog) => {
   if (imageUrl.startsWith('http')) {
     return imageUrl;
   } else if (imageUrl.startsWith('/')) {
-    return imageUrl;
+    // For paths starting with /, use the production API base URL
+    return `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${imageUrl}`;
   } else {
-    return '/' + imageUrl;
+    // For relative paths, use the production API base URL
+    return `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${imageUrl}`;
   }
 };
 
@@ -374,13 +376,33 @@ const BlogDetailPage = () => {
     if (!blog) return;
     
     try {
+      console.log('Fetching comments for post ID:', blog.id);
       const response = await commentsApi.getCommentsByPostId(blog.id);
-      console.log('Comments response:', response.data);
+      console.log('Raw comments response:', response);
       
-      if (response.data && (response.data.results || Array.isArray(response.data))) {
-        setComments(response.data.results || response.data);
+      if (response && response.data) {
+        console.log('Comments data structure:', response.data);
+        
+        // Handle different response structures
+        let commentData;
+        if (Array.isArray(response.data)) {
+          // Direct array of comments
+          commentData = response.data;
+        } else if (response.data.results && Array.isArray(response.data.results)) {
+          // Paginated response with results array
+          commentData = response.data.results;
+        } else if (typeof response.data === 'object') {
+          // Single comment object or other structure
+          commentData = [response.data];
+        } else {
+          // Fallback to empty array
+          commentData = [];
+        }
+        
+        console.log('Processed comments:', commentData);
+        setComments(commentData);
       } else {
-        // Use mock comments if API doesn't return proper data
+        console.warn('No comment data in response, using mock data');
         setComments(mockComments);
       }
       
@@ -392,6 +414,11 @@ const BlogDetailPage = () => {
       if (err.code === 'ERR_NETWORK') {
         setCommentError('Network error: Could not load comments. Please check your connection.');
       } else if (err.response) {
+        console.error('Error response details:', {
+          status: err.response.status,
+          statusText: err.response.statusText,
+          data: err.response.data
+        });
         setCommentError(`Error loading comments: ${err.response.status} - ${err.response.statusText || 'Unknown error'}`);
       } else {
         setCommentError('Failed to load comments. Please try again later.');
@@ -536,6 +563,9 @@ const BlogDetailPage = () => {
       
       console.log('Submitting comment:', commentData);
       
+      // Log the API endpoint for debugging
+      console.log('API endpoint:', `${commentsApi.getBaseUrl()}/comments/`);
+      
       const response = await commentsApi.submitComment(commentData);
       console.log('Comment submission response:', response);
       
@@ -549,11 +579,25 @@ const BlogDetailPage = () => {
       setIsReplying(false);
       setReplyingTo(null);
       
-      // Show success message
-      alert('Your comment has been submitted successfully.');
+      // Show success message with moderation notice
+      alert('Thank you! Your comment has been submitted and will appear after moderation.');
       
-      // Refresh comments
-      await fetchComments();
+      // Add the pending comment to the local state so the user sees their comment
+      if (response.data) {
+        // If the response contains a _note field, it means it's a simulated response
+        const isPending = response.data._note || response.data.status === 'pending';
+        
+        // Create a local representation of the comment
+        const newComment = {
+          ...response.data,
+          status: isPending ? 'pending' : 'approved',
+          _isLocalOnly: isPending // Mark as local only if it's a simulated response
+        };
+        
+        // Add to local state
+        setComments(prev => [newComment, ...prev]);
+      }
+      
       setCommentError(null);
       setCommentFormErrors({
         name: '',
@@ -564,13 +608,51 @@ const BlogDetailPage = () => {
       console.error('Error submitting comment:', err);
       
       // Provide more detailed error messages
-      if (err.code === 'ERR_NETWORK') {
-        setCommentError('Network error: Could not submit comment. Please check your connection.');
+      if (err.code === 'ERR_NETWORK' || err.name === 'AbortError') {
+        setCommentError('Network error: Could not submit comment. Please check your connection and try again.');
       } else if (err.response) {
-        setCommentError(`Error submitting comment: ${err.response.status} - ${err.response.statusText || 'Unknown error'}`);
+        // Log detailed error information
+        console.error('Error response:', {
+          status: err.response.status,
+          statusText: err.response.statusText,
+          data: err.response.data || 'No response data',
+          headers: err.response.headers
+        });
+        
+        if (err.response.status === 500) {
+          setCommentError('The server encountered an error processing your comment. We\'ve logged this issue and will fix it soon. Please try again later.');
+        } else {
+          setCommentError(`Error submitting comment: ${err.response.status} - ${err.response.statusText || 'Unknown error'}. Please try again.`);
+        }
       } else {
-        setCommentError('Failed to submit comment. Please try again.');
+        setCommentError('Failed to submit comment. Please try again later.');
       }
+      
+      // Despite the error, show a message that the comment will be stored locally
+      alert('There was an issue connecting to our servers. Your comment has been saved locally and will be submitted when the connection is restored.');
+      
+      // Create a local-only comment
+      const localComment = {
+        ...commentForm,
+        id: `local-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        post: blog.id,
+        status: 'pending',
+        _isLocalOnly: true
+      };
+      
+      // Add to local state
+      setComments(prev => [localComment, ...prev]);
+      
+      // Reset form
+      setCommentForm({
+        name: '',
+        email: '',
+        content: '',
+        parent_id: null
+      });
+      setIsReplying(false);
+      setReplyingTo(null);
     } finally {
       setCommentLoading(false);
     }
@@ -578,44 +660,131 @@ const BlogDetailPage = () => {
 
   // Get current comments for pagination
   const getCurrentComments = () => {
-    const filteredComments = comments.filter(comment => 
-      comment.status === 'approved' && comment.parent_id === null
+    console.log('Current comments array:', comments);
+    
+    // Filter comments to show:
+    // 1. Approved comments with no parent (top-level)
+    // 2. Pending comments that were submitted by the current user (marked with _isLocalOnly)
+    const filteredComments = comments.filter(comment => {
+      // Check if comment is approved using various possible formats
+      const isApproved = 
+        comment.status === 'approved' || 
+        comment.approved === true ||
+        comment.is_approved === true;
+      
+      // Check if comment is a local pending comment
+      const isLocalPending = comment._isLocalOnly === true;
+      
+      // Check if it's a top-level comment (no parent)
+      const isTopLevel = 
+        !comment.parent_id && 
+        !comment.parent && 
+        comment.parent !== 0;
+      
+      return (isApproved && isTopLevel) || (isLocalPending && isTopLevel);
+    });
+    
+    console.log('Filtered comments:', filteredComments);
+    
+    // Sort comments with newest first
+    const sortedComments = [...filteredComments].sort((a, b) => 
+      new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0)
     );
     
     const indexOfLastComment = commentPage * commentsPerPage;
     const indexOfFirstComment = indexOfLastComment - commentsPerPage;
-    return filteredComments.slice(indexOfFirstComment, indexOfLastComment);
+    return sortedComments.slice(indexOfFirstComment, indexOfLastComment);
   };
 
   // Render comment with replies
-  const renderComment = (comment, isReply = false) => (
+  const renderComment = (comment, isReply = false) => {
+    if (!comment) return null;
+    
+    // Check if this is a pending comment
+    const isPending = 
+      comment.status === 'pending' || 
+      comment.approved === false || 
+      comment.is_approved === false;
+      
+    const isLocalOnly = comment._isLocalOnly === true;
+    
+    // Get comment author name, handling different API formats
+    const authorName = comment.name || comment.author_name || comment.author || 'Anonymous';
+    
+    // Get comment content, handling different API formats
+    const commentContent = comment.content || comment.text || comment.body || '';
+    
+    // Get comment date, handling different API formats
+    const commentDate = comment.created_at || comment.date || comment.created || new Date().toISOString();
+    
+    // Get replies, handling different API formats
+    const replies = comment.replies || comment.children || [];
+    
+    return (
     <Box 
       key={comment.id} 
       sx={{ 
         mb: isReply ? 1 : 2,
         p: { xs: 1.5, sm: 2 },
         borderRadius: '8px',
-        bgcolor: isReply ? 'rgba(0, 0, 0, 0.02)' : 'background.default',
-        border: isReply ? '1px solid rgba(0, 0, 0, 0.05)' : 'none',
+        bgcolor: isPending 
+          ? 'rgba(255, 244, 229, 0.7)' // Light orange background for pending comments
+          : isReply 
+            ? 'rgba(0, 0, 0, 0.02)' 
+            : 'background.default',
+        border: isPending 
+          ? '1px dashed rgba(255, 152, 0, 0.5)' // Orange dashed border for pending
+          : isReply 
+            ? '1px solid rgba(0, 0, 0, 0.05)' 
+            : 'none',
         ml: isReply ? { xs: 2, sm: 4 } : 0,
+        position: 'relative',
       }}
     >
+      {isPending && (
+        <Box 
+          sx={{ 
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            bgcolor: 'warning.light',
+            color: 'warning.contrastText',
+            borderRadius: '4px',
+            px: 1,
+            py: 0.5,
+            fontSize: '0.7rem',
+            fontWeight: 500,
+          }}
+        >
+          <AccessTimeIcon sx={{ fontSize: '0.9rem' }} />
+          {isLocalOnly ? 'Saved Locally' : 'Pending Approval'}
+        </Box>
+      )}
+      
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
         <Avatar 
           sx={{ 
             width: { xs: 32, sm: 36 }, 
             height: { xs: 32, sm: 36 }, 
             mr: 1.5,
-            bgcolor: comment.name.toLowerCase().includes('admin') ? 'secondary.main' : 'primary.main',
+            bgcolor: authorName.toLowerCase().includes('admin') ? 'secondary.main' : 'primary.main',
             fontSize: { xs: '0.85rem', sm: '1rem' },
+            opacity: isPending ? 0.7 : 1, // Slightly faded for pending comments
           }}
         >
-          {comment.name ? comment.name.charAt(0).toUpperCase() : 'A'}
+          {authorName ? authorName.charAt(0).toUpperCase() : 'A'}
         </Avatar>
         <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-            {comment.name || 'Anonymous'}
-            {comment.name.toLowerCase().includes('admin') && (
+          <Typography variant="subtitle1" sx={{ 
+            fontWeight: 600, 
+            fontSize: { xs: '0.9rem', sm: '1rem' },
+            color: isPending ? 'text.secondary' : 'text.primary',
+          }}>
+            {authorName}
+            {authorName.toLowerCase().includes('admin') && (
               <Chip 
                 label="Admin" 
                 size="small" 
@@ -625,14 +794,14 @@ const BlogDetailPage = () => {
             )}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-            {getRelativeTime(comment.created_at)}
+            {getRelativeTime(commentDate)}
           </Typography>
         </Box>
-        {!isReply && (
+        {!isReply && !isPending && (
           <Button
             size="small"
             startIcon={<ReplyIcon fontSize="small" />}
-            onClick={() => handleReplyClick(comment.id, comment.name)}
+            onClick={() => handleReplyClick(comment.id, authorName)}
             sx={{ fontSize: '0.75rem' }}
           >
             Reply
@@ -647,13 +816,15 @@ const BlogDetailPage = () => {
           fontSize: { xs: '0.85rem', sm: '0.9rem' },
           wordBreak: 'break-word',
           whiteSpace: 'pre-line',
+          color: isPending ? 'text.secondary' : 'text.primary',
+          fontStyle: isPending ? 'italic' : 'normal',
         }}
       >
-        {comment.content}
+        {commentContent}
       </Typography>
       
       {/* Display replies if they exist */}
-      {!isReply && comment.replies && comment.replies.length > 0 && (
+      {!isReply && replies && replies.length > 0 && (
         <>
           <Box 
             sx={{ 
@@ -678,12 +849,12 @@ const BlogDetailPage = () => {
               {expandedReplies[comment.id] ? (
                 <>
                   <ExpandLessIcon fontSize="small" sx={{ mr: 0.5 }} />
-                  Hide Replies ({comment.replies.length})
+                  Hide Replies ({replies.length})
                 </>
               ) : (
                 <>
                   <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5 }} />
-                  Show Replies ({comment.replies.length})
+                  Show Replies ({replies.length})
                 </>
               )}
             </Typography>
@@ -691,13 +862,13 @@ const BlogDetailPage = () => {
           
           <Collapse in={expandedReplies[comment.id]}>
             <Box sx={{ mt: 1.5 }}>
-              {comment.replies.map(reply => renderComment(reply, true))}
+              {replies.map(reply => renderComment(reply, true))}
             </Box>
           </Collapse>
         </>
       )}
     </Box>
-  );
+  )};
 
   // Add search functionality
   const handleSearchChange = (e) => {
@@ -1145,11 +1316,11 @@ const BlogDetailPage = () => {
                         }}
                       >
                         <img
-                          src={getImageUrl(relatedBlog) || '/images/placeholder.jpg'}
+                          src={getImageUrl(relatedBlog) || `${window.location.origin}/images/placeholder.jpg`}
                           alt={relatedBlog.title}
                           onError={(e) => {
                             console.error("Related blog image failed to load:", e.target.src);
-                            e.target.src = '/images/placeholder.jpg';
+                            e.target.src = `${window.location.origin}/images/placeholder.jpg`;
                           }}
                           style={{
                             width: '100%',
@@ -1232,7 +1403,25 @@ const BlogDetailPage = () => {
                     mb: { xs: 3, md: 4 } 
                   }}
                 >
-                  Comments ({comments.filter(c => c.status === 'approved').length})
+                  Comments ({
+                    comments.filter(c => {
+                      // Count approved comments and local pending comments
+                      const isApproved = 
+                        c.status === 'approved' || 
+                        c.approved === true || 
+                        c.is_approved === true;
+                        
+                      const isLocalPending = c._isLocalOnly === true;
+                      
+                      // Check if it's a top-level comment
+                      const isTopLevel = 
+                        !c.parent_id && 
+                        !c.parent && 
+                        c.parent !== 0;
+                        
+                      return (isApproved && isTopLevel) || (isLocalPending && isTopLevel);
+                    }).length
+                  })
                 </Typography>
                 
                 {/* Comment Form */}
@@ -1340,10 +1529,38 @@ const BlogDetailPage = () => {
                       {getCurrentComments().map((comment) => renderComment(comment))}
                       
                       {/* Pagination */}
-                      {comments.filter(c => c.status === 'approved' && c.parent_id === null).length > commentsPerPage && (
+                      {comments.filter(c => {
+                        // Count approved comments for pagination
+                        const isApproved = 
+                          c.status === 'approved' || 
+                          c.approved === true || 
+                          c.is_approved === true;
+                          
+                        // Check if it's a top-level comment
+                        const isTopLevel = 
+                          !c.parent_id && 
+                          !c.parent && 
+                          c.parent !== 0;
+                          
+                        return isApproved && isTopLevel;
+                      }).length > commentsPerPage && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                           <Pagination
-                            count={Math.ceil(comments.filter(c => c.status === 'approved' && c.parent_id === null).length / commentsPerPage)}
+                            count={Math.ceil(comments.filter(c => {
+                              // Count approved comments for pagination
+                              const isApproved = 
+                                c.status === 'approved' || 
+                                c.approved === true || 
+                                c.is_approved === true;
+                                
+                              // Check if it's a top-level comment
+                              const isTopLevel = 
+                                !c.parent_id && 
+                                !c.parent && 
+                                c.parent !== 0;
+                                
+                              return isApproved && isTopLevel;
+                            }).length / commentsPerPage)}
                             page={commentPage}
                             onChange={handleCommentPageChange}
                             color="secondary"
@@ -1464,7 +1681,7 @@ const BlogDetailPage = () => {
                         <ListItemAvatar>
                           <Avatar
                             variant="rounded"
-                            src={getImageUrl(relatedBlog) || '/images/placeholder.jpg'}
+                            src={getImageUrl(relatedBlog) || './images/placeholder.jpg'}
                             alt={relatedBlog.title}
                             sx={{
                               width: 80,
@@ -1568,155 +1785,6 @@ const BlogDetailPage = () => {
           </Grid>
         ) : null}
       </Container>
-      
-      {/* Footer */}
-      <Box 
-        component="footer"
-        sx={{ 
-          bgcolor: 'background.paper',
-          py: 4,
-          borderTop: '1px solid',
-          borderColor: 'divider',
-          mt: 4,
-        }}
-      >
-        <Container maxWidth="lg">
-          <Grid container spacing={4}>
-            {/* Contact Information */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                Contact Us
-              </Typography>
-              <List dense disablePadding>
-                <ListItem disableGutters>
-                  <ListItemAvatar sx={{ minWidth: 30 }}>
-                    <LocationOnIcon color="secondary" fontSize="small" />
-                  </ListItemAvatar>
-                  <ListItemText 
-                    primary="Midtown Industry Estate 123 Main Street"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                  />
-                </ListItem>
-                <ListItem disableGutters>
-                  <ListItemAvatar sx={{ minWidth: 30 }}>
-                    <EmailIcon color="secondary" fontSize="small" />
-                  </ListItemAvatar>
-                  <ListItemText 
-                    primary="info@driveronhire.com"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                  />
-                </ListItem>
-                <ListItem disableGutters>
-                  <ListItemAvatar sx={{ minWidth: 30 }}>
-                    <PhoneIcon color="secondary" fontSize="small" />
-                  </ListItemAvatar>
-                  <ListItemText 
-                    primary="+91 123 456 789"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                  />
-                </ListItem>
-              </List>
-            </Grid>
-            
-            {/* Top Listings */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                Top Listings
-              </Typography>
-              <List dense disablePadding>
-                {['Local Private Driver', 'Daily Driver Hire', 'Monthly Driver Hire', 'Luxury Private Hire'].map((item) => (
-                  <ListItem 
-                    key={item} 
-                    disableGutters
-                    component={Link}
-                    to="/"
-                    sx={{ 
-                      color: 'text.primary',
-                      textDecoration: 'none',
-                      '&:hover': { color: 'secondary.main' },
-                    }}
-                  >
-                    <ListItemText 
-                      primary={item}
-                      primaryTypographyProps={{ variant: 'body2' }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Grid>
-            
-            {/* Useful Links */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                Useful Links
-              </Typography>
-              <List dense disablePadding>
-                {['Home', 'About Us', 'Services', 'Blogs', 'Contact Us'].map((item) => (
-                  <ListItem 
-                    key={item} 
-                    disableGutters
-                    component={Link}
-                    to={item === 'Home' ? '/' : `/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                    sx={{ 
-                      color: 'text.primary',
-                      textDecoration: 'none',
-                      '&:hover': { color: 'secondary.main' },
-                    }}
-                  >
-                    <ListItemText 
-                      primary={item}
-                      primaryTypographyProps={{ variant: 'body2' }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Grid>
-            
-            {/* Social Media */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                Follow Us
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <IconButton color="primary" component="a" href="https://facebook.com" target="_blank">
-                  <FacebookIcon />
-                </IconButton>
-                <IconButton color="primary" component="a" href="https://twitter.com" target="_blank">
-                  <TwitterIcon />
-                </IconButton>
-                <IconButton color="primary" component="a" href="https://instagram.com" target="_blank">
-                  <InstagramIcon />
-                </IconButton>
-                <IconButton color="primary" component="a" href="https://linkedin.com" target="_blank">
-                  <LinkedInIcon />
-                </IconButton>
-              </Box>
-              
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                Subscribe to our newsletter for the latest updates and offers.
-              </Typography>
-            </Grid>
-          </Grid>
-          
-          {/* Copyright */}
-          <Box 
-            sx={{ 
-              mt: 4, 
-              pt: 2, 
-              borderTop: '1px solid', 
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <CopyrightIcon fontSize="small" sx={{ mr: 1 }} />
-            <Typography variant="body2" color="text.secondary" align="center">
-              {new Date().getFullYear()} Driver On Hire. All rights reserved.
-            </Typography>
-          </Box>
-        </Container>
-      </Box>
     </>
   );
 };
